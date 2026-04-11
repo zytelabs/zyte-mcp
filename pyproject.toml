@@ -8,6 +8,7 @@ dependencies = [
     "fastmcp>=3.2.0",
     "httpx>=0.28.1",
     "pydantic>=2.12.5",
+    "scrapinghub[msgpack]>=2.4.0",
 ]
 
 [project.optional-dependencies]

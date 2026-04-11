@@ -30,6 +30,7 @@ async def test_stdio_lists_only_zyte_tools_without_scrapy_cloud_key():
     env = dict(os.environ)
     env["ZYTE_API_KEY"] = "test-key"
     env.pop("SCRAPY_CLOUD_API_KEY", None)
+    env.pop("SHUB_APIKEY", None)
 
     tool_names = await _list_stdio_tool_names(env)
 
@@ -52,3 +53,5 @@ async def test_stdio_lists_scrapy_cloud_tools_when_key_is_present():
     assert "scrapy_cloud_run_spider" in tool_names
     assert "scrapy_cloud_list_jobs" in tool_names
     assert "scrapy_cloud_get_logs" in tool_names
+    assert "scrapy_cloud_cancel_job" in tool_names
+    assert "scrapy_cloud_list_spiders" in tool_names
