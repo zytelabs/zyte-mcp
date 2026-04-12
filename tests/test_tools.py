@@ -424,3 +424,94 @@ async def test_scrapy_cloud_deploy_success(deploy_server):
     assert data["project_id"] == 12345
     assert data["version"] == "1234-master"
     assert "https://app.zyte.com/p/12345/" in data["stdout"]
+
+
+@pytest.mark.asyncio
+async def test_scrapy_cloud_deploy_uses_github_version(deploy_server, monkeypatch, tmp_path):
+    """When GitHub returns the latest release, the stack in scrapinghub.yml uses it."""
+    call_count = 0
+    fake_stdout = (
+        b'Packing version 1234-master\n'
+        b'Deploying to Scrapy Cloud project "99999"\n'
+    )
+
+    async def fake_subprocess(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        proc = MagicMock()
+        proc.returncode = 0
+        if call_count == 1:
+            proc.communicate = AsyncMock(return_value=(b"shub, version 1.0", b""))
+        else:
+            proc.communicate = AsyncMock(return_value=(fake_stdout, b""))
+        return proc
+
+    # Patch _fetch_latest_scrapy_version to return a fixed latest version.
+    with patch(
+        "zyte_mcp.tools.scrapy_cloud_deploy._fetch_latest_scrapy_version",
+        return_value="2.15",
+    ):
+        with patch(
+            "zyte_mcp.tools.scrapy_cloud_deploy.asyncio.create_subprocess_exec",
+            side_effect=fake_subprocess,
+        ):
+            (tmp_path / "scrapy.cfg").touch()
+            (tmp_path / "pyproject.toml").write_text(
+                '[project]\ndependencies = ["scrapy>=2.14.2"]\n', encoding="utf-8"
+            )
+            result = await deploy_server.call_tool(
+                "scrapy_cloud_deploy",
+                {"project_path": str(tmp_path), "project_id": 99999},
+            )
+
+    data = result.structured_content
+    assert data["success"] is True
+    yml_content = (tmp_path / "scrapinghub.yml").read_text()
+    # GitHub version (2.15) must take precedence over pyproject.toml version (2.14)
+    assert "stack: scrapy:2.15" in yml_content
+    assert "scrapy:2.14" not in yml_content
+
+
+@pytest.mark.asyncio
+async def test_scrapy_cloud_deploy_falls_back_when_github_unavailable(deploy_server, tmp_path):
+    """When GitHub is unreachable, the stack falls back to pyproject.toml version."""
+    call_count = 0
+    fake_stdout = (
+        b'Packing version 1234-master\n'
+        b'Deploying to Scrapy Cloud project "99999"\n'
+    )
+
+    async def fake_subprocess(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        proc = MagicMock()
+        proc.returncode = 0
+        if call_count == 1:
+            proc.communicate = AsyncMock(return_value=(b"shub, version 1.0", b""))
+        else:
+            proc.communicate = AsyncMock(return_value=(fake_stdout, b""))
+        return proc
+
+    # Patch _fetch_latest_scrapy_version to simulate GitHub being unreachable.
+    with patch(
+        "zyte_mcp.tools.scrapy_cloud_deploy._fetch_latest_scrapy_version",
+        return_value=None,
+    ):
+        with patch(
+            "zyte_mcp.tools.scrapy_cloud_deploy.asyncio.create_subprocess_exec",
+            side_effect=fake_subprocess,
+        ):
+            (tmp_path / "scrapy.cfg").touch()
+            (tmp_path / "pyproject.toml").write_text(
+                '[project]\ndependencies = ["scrapy>=2.14.2"]\n', encoding="utf-8"
+            )
+            result = await deploy_server.call_tool(
+                "scrapy_cloud_deploy",
+                {"project_path": str(tmp_path), "project_id": 99999},
+            )
+
+    data = result.structured_content
+    assert data["success"] is True
+    yml_content = (tmp_path / "scrapinghub.yml").read_text()
+    # Falls back to pyproject.toml-derived version
+    assert "stack: scrapy:2.14" in yml_content

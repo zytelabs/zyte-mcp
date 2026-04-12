@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import re
 import tomllib
+import urllib.request
 from asyncio.subprocess import PIPE
 from pathlib import Path
 from typing import Any
@@ -13,6 +15,37 @@ from typing import Any
 from fastmcp import FastMCP
 
 from zyte_mcp.scrapy_cloud_config import _get_scrapy_cloud_api_key
+
+
+_SCRAPY_RELEASES_URL = (
+    "https://api.github.com/repos/scrapy/scrapy/releases/latest"
+)
+
+
+async def _fetch_latest_scrapy_version() -> str | None:
+    """Return the latest Scrapy major.minor version from GitHub (e.g. '2.15').
+
+    Returns None on any error so callers can fall back gracefully.
+    """
+    loop = asyncio.get_event_loop()
+
+    def _fetch() -> str | None:
+        try:
+            req = urllib.request.Request(
+                _SCRAPY_RELEASES_URL,
+                headers={"Accept": "application/vnd.github+json", "User-Agent": "zyte-mcp"},
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status != 200:
+                    return None
+                data = json.loads(resp.read())
+            tag = data.get("tag_name", "")
+            m = re.match(r"(\d+\.\d+)", tag)
+            return m.group(1) if m else None
+        except Exception:
+            return None
+
+    return await loop.run_in_executor(None, _fetch)
 
 
 def register_scrapy_cloud_deploy_tool(server: FastMCP) -> None:
@@ -111,6 +144,13 @@ def register_scrapy_cloud_deploy_tool(server: FastMCP) -> None:
                         scrapy_stack = f"scrapy:{ver_match.group(1)}"
                 else:
                     requirements.append(dep)
+
+            # Override with the latest release from GitHub when available so the
+            # deployed project always targets the current Scrapy release.
+            # Falls back silently to the pyproject.toml-derived version on error.
+            github_version = await _fetch_latest_scrapy_version()
+            if github_version:
+                scrapy_stack = f"scrapy:{github_version}"
 
             (project_dir / "requirements.txt").write_text(
                 "\n".join(requirements) + "\n", encoding="utf-8"
