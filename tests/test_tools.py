@@ -48,6 +48,110 @@ class FakeClient:
             return {"url": payload["url"], "statusCode": 200, "productList": {"items": []}}
         if payload.get("article"):
             return {"url": payload["url"], "statusCode": 200, "article": {"headline": "Story"}}
+        if payload.get("productNavigation"):
+            return {
+                "url": payload["url"],
+                "statusCode": 200,
+                "productNavigation": {
+                    "url": payload["url"],
+                    "categoryName": "Electronics",
+                    "nextPage": {"url": "https://example.com/products?page=2", "name": "Next"},
+                    "pageNumber": 1,
+                    "items": [{"url": "https://example.com/product/1", "name": "Widget", "metadata": {"probability": 0.95}}],
+                    "subCategories": [],
+                    "metadata": {"dateDownloaded": "2024-01-01T00:00:00Z"},
+                },
+            }
+        if payload.get("articleList"):
+            return {
+                "url": payload["url"],
+                "statusCode": 200,
+                "articleList": {
+                    "url": payload["url"],
+                    "articles": [
+                        {
+                            "url": "https://example.com/article/1",
+                            "headline": "Breaking News",
+                            "metadata": {"probability": 0.98},
+                        }
+                    ],
+                    "metadata": {"dateDownloaded": "2024-01-01T00:00:00Z"},
+                },
+            }
+        if payload.get("articleNavigation"):
+            return {
+                "url": payload["url"],
+                "statusCode": 200,
+                "articleNavigation": {
+                    "url": payload["url"],
+                    "nextPage": {"url": "https://example.com/news?page=2", "name": "Next"},
+                    "pageNumber": 1,
+                    "items": [{"url": "https://example.com/article/1", "name": "Breaking News", "metadata": {"probability": 0.97}}],
+                    "metadata": {"dateDownloaded": "2024-01-01T00:00:00Z"},
+                },
+            }
+        if payload.get("forumThread"):
+            return {
+                "url": payload["url"],
+                "statusCode": 200,
+                "forumThread": {
+                    "url": payload["url"],
+                    "topic": {"name": "How do I do X?"},
+                    "posts": [
+                        {
+                            "text": "Here is how you do X.",
+                            "datePublished": "2024-01-01T10:00:00Z",
+                            "reactions": {"likes": 5, "replies": 2},
+                            "metadata": {"probability": 0.99},
+                        }
+                    ],
+                    "metadata": {"dateDownloaded": "2024-01-01T00:00:00Z"},
+                },
+            }
+        if payload.get("jobPosting"):
+            return {
+                "url": payload["url"],
+                "statusCode": 200,
+                "jobPosting": {
+                    "url": payload["url"],
+                    "jobTitle": "Senior Engineer",
+                    "hiringOrganization": {"name": "Acme Corp"},
+                    "jobLocation": {"raw": "Remote"},
+                    "description": "Build great things.",
+                    "metadata": {"probability": 0.96, "dateDownloaded": "2024-01-01T00:00:00Z"},
+                },
+            }
+        if payload.get("jobPostingNavigation"):
+            return {
+                "url": payload["url"],
+                "statusCode": 200,
+                "jobPostingNavigation": {
+                    "url": payload["url"],
+                    "nextPage": {"url": "https://example.com/jobs?page=2", "name": "Next"},
+                    "pageNumber": 1,
+                    "items": [{"url": "https://example.com/jobs/1", "name": "Senior Engineer", "metadata": {"probability": 0.94}}],
+                    "metadata": {"dateDownloaded": "2024-01-01T00:00:00Z"},
+                },
+            }
+        if payload.get("serp"):
+            return {
+                "url": payload["url"],
+                "statusCode": 200,
+                "serp": {
+                    "url": payload["url"],
+                    "pageNumber": 1,
+                    "organicResults": [
+                        {"name": "Example", "url": "https://example.com", "description": "An example site", "rank": 1},
+                        {"name": "Another", "url": "https://another.com", "description": "Another site", "rank": 2},
+                    ],
+                    "metadata": {
+                        "displayedQuery": "test query",
+                        "searchedQuery": "test query",
+                        "totalOrganicResults": 1000000,
+                        "dateDownloaded": "2024-01-01T00:00:00Z",
+                    },
+                },
+            }
         return {"url": payload["url"], "statusCode": 200, "pageContent": {"text": "hello"}}
 
     def decode_text_body(self, raw):
@@ -310,6 +414,90 @@ async def test_scrapy_cloud_list_spiders_tool(server):
     assert data["spiders"][0]["id"] == "demo"
 
 
+
+
+@pytest.mark.asyncio
+async def test_extract_serp_tool(server):
+    app, fake_client, _ = server
+    result = await app.call_tool("extract_serp", {"url": "https://www.google.com/search?q=test+query", "pages": 1})
+    data = result.structured_content
+
+    # Correct payload sent to Zyte API
+    payload = fake_client.payloads[-1]
+    assert payload["serp"] is True
+    # browserHtml is the new default — serpOptions must be present
+    assert payload["serpOptions"]["extractFrom"] == "browserHtml"
+
+    # Response structure (multi-page format)
+    assert data["pages_fetched"] == 1
+    assert data["status_codes"] == [200]
+    assert len(data["organic_results"]) == 2
+    assert data["organic_results"][0]["name"] == "Example"
+    assert data["organic_results"][0]["rank"] == 1
+    assert data["metadata"]["searchedQuery"] == "test query"
+    assert data["metadata"]["totalOrganicResults"] == 1000000
+
+
+@pytest.mark.asyncio
+async def test_extract_serp_default_pages(server):
+    """extract_serp fetches 5 pages by default."""
+    app, fake_client, _ = server
+    await app.call_tool("extract_serp", {"url": "https://www.google.com/search?q=test"})
+    # 5 payloads should have been sent (one per page)
+    serp_payloads = [p for p in fake_client.payloads if p.get("serp")]
+    assert len(serp_payloads) == 5
+    # Page 1 has no start param; page 2 onwards has start=10,20,...
+    assert "start" not in serp_payloads[0]["url"]
+    assert "start=10" in serp_payloads[1]["url"]
+    assert "start=20" in serp_payloads[2]["url"]
+
+
+@pytest.mark.asyncio
+async def test_extract_serp_with_options(server):
+    app, fake_client, _ = server
+    result = await app.call_tool(
+        "extract_serp",
+        {
+            "url": "https://www.google.com/search?q=test",
+            "pages": 1,
+            "options": {"extract_from": "browserHtml", "include_iframes": True},
+        },
+    )
+    data = result.structured_content
+
+    payload = fake_client.payloads[-1]
+    assert payload["serp"] is True
+    assert payload["serpOptions"]["extractFrom"] == "browserHtml"
+    assert payload["serpOptions"]["includeIframes"] is True
+    assert data["pages_fetched"] == 1
+    assert len(data["organic_results"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_extract_serp_extract_from_only(server):
+    """extract_from can be overridden to httpResponseBody."""
+    app, fake_client, _ = server
+    await app.call_tool(
+        "extract_serp",
+        {
+            "url": "https://www.google.com/search?q=test",
+            "pages": 1,
+            "options": {"extract_from": "httpResponseBody"},
+        },
+    )
+    payload = fake_client.payloads[-1]
+    assert payload["serpOptions"]["extractFrom"] == "httpResponseBody"
+    # include_iframes defaulting to False should not be sent
+    assert "includeIframes" not in payload["serpOptions"]
+
+
+@pytest.mark.asyncio
+async def test_extract_serp_registered_in_tool_list(server):
+    app, _, _ = server
+    tool_names = await _tool_names(app)
+    assert "extract_serp" in tool_names
+
+
 # --- scrapy_cloud_deploy tests ---
 
 
@@ -515,3 +703,88 @@ async def test_scrapy_cloud_deploy_falls_back_when_github_unavailable(deploy_ser
     yml_content = (tmp_path / "scrapinghub.yml").read_text()
     # Falls back to pyproject.toml-derived version
     assert "stack: scrapy:2.14" in yml_content
+
+
+# --- new extraction type tests ---
+
+
+@pytest.mark.asyncio
+async def test_extract_product_navigation_tool(server):
+    app, fake_client, _ = server
+    result = await app.call_tool("extract_product_navigation", {"url": "https://example.com/category"})
+    data = result.structured_content
+    assert fake_client.payloads[-1]["productNavigation"] is True
+    assert data["data"]["categoryName"] == "Electronics"
+    assert data["data"]["nextPage"]["url"] == "https://example.com/products?page=2"
+    assert data["data"]["items"][0]["name"] == "Widget"
+    assert data["metadata"]["dateDownloaded"] == "2024-01-01T00:00:00Z"
+
+
+@pytest.mark.asyncio
+async def test_extract_article_list_tool(server):
+    app, fake_client, _ = server
+    result = await app.call_tool("extract_article_list", {"url": "https://example.com/news"})
+    data = result.structured_content
+    assert fake_client.payloads[-1]["articleList"] is True
+    assert data["data"]["articles"][0]["headline"] == "Breaking News"
+    assert data["data"]["articles"][0]["metadata"]["probability"] == 0.98
+    assert data["metadata"]["dateDownloaded"] == "2024-01-01T00:00:00Z"
+
+
+@pytest.mark.asyncio
+async def test_extract_article_navigation_tool(server):
+    app, fake_client, _ = server
+    result = await app.call_tool("extract_article_navigation", {"url": "https://example.com/news"})
+    data = result.structured_content
+    assert fake_client.payloads[-1]["articleNavigation"] is True
+    assert data["data"]["nextPage"]["url"] == "https://example.com/news?page=2"
+    assert data["data"]["pageNumber"] == 1
+    assert data["data"]["items"][0]["name"] == "Breaking News"
+    assert data["metadata"]["dateDownloaded"] == "2024-01-01T00:00:00Z"
+
+
+@pytest.mark.asyncio
+async def test_extract_forum_thread_tool(server):
+    app, fake_client, _ = server
+    result = await app.call_tool("extract_forum_thread", {"url": "https://forum.example.com/thread/1"})
+    data = result.structured_content
+    assert fake_client.payloads[-1]["forumThread"] is True
+    assert data["data"]["topic"]["name"] == "How do I do X?"
+    assert data["data"]["posts"][0]["text"] == "Here is how you do X."
+    assert data["data"]["posts"][0]["reactions"]["likes"] == 5
+    assert data["metadata"]["dateDownloaded"] == "2024-01-01T00:00:00Z"
+
+
+@pytest.mark.asyncio
+async def test_extract_job_posting_tool(server):
+    app, fake_client, _ = server
+    result = await app.call_tool("extract_job_posting", {"url": "https://jobs.example.com/job/1"})
+    data = result.structured_content
+    assert fake_client.payloads[-1]["jobPosting"] is True
+    assert data["data"]["jobTitle"] == "Senior Engineer"
+    assert data["data"]["hiringOrganization"]["name"] == "Acme Corp"
+    assert data["metadata"]["probability"] == 0.96
+
+
+@pytest.mark.asyncio
+async def test_extract_job_posting_navigation_tool(server):
+    app, fake_client, _ = server
+    result = await app.call_tool("extract_job_posting_navigation", {"url": "https://jobs.example.com"})
+    data = result.structured_content
+    assert fake_client.payloads[-1]["jobPostingNavigation"] is True
+    assert data["data"]["nextPage"]["url"] == "https://example.com/jobs?page=2"
+    assert data["data"]["pageNumber"] == 1
+    assert data["data"]["items"][0]["name"] == "Senior Engineer"
+    assert data["metadata"]["dateDownloaded"] == "2024-01-01T00:00:00Z"
+
+
+@pytest.mark.asyncio
+async def test_new_extraction_tools_registered(server):
+    app, _, _ = server
+    tool_names = await _tool_names(app)
+    assert "extract_product_navigation" in tool_names
+    assert "extract_article_list" in tool_names
+    assert "extract_article_navigation" in tool_names
+    assert "extract_forum_thread" in tool_names
+    assert "extract_job_posting" in tool_names
+    assert "extract_job_posting_navigation" in tool_names

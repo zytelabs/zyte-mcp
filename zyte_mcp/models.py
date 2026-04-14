@@ -58,3 +58,8 @@ class ExtractionOptions(ZyteRequestOptions):
     extract_from: Literal["httpResponseBody", "browserHtml", "browserHtmlOnly"] | None = None
     custom_attributes: dict[str, Any] | None = None
     custom_attributes_options: dict[str, Any] | None = None
+
+
+class SerpOptions(BaseModel):
+    extract_from: Literal["httpResponseBody", "browserHtml"] = "browserHtml"
+    include_iframes: bool = False
