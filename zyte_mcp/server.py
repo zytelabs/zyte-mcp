@@ -11,7 +11,6 @@ from zyte_mcp.tools import (
     register_browser_tools,
     register_extraction_tools,
     register_http_tools,
-    register_scrapy_cloud_deploy_tool,
     register_scrapy_cloud_jobs_tools,
     register_scrapy_cloud_storage_tools,
 )
@@ -28,7 +27,6 @@ def create_server() -> FastMCP:
     register_http_tools(server, client)
     register_browser_tools(server, client)
     register_extraction_tools(server, client)
-    register_scrapy_cloud_deploy_tool(server)
 
     scrapy_cloud_client = get_scrapy_cloud_client_optional()
     if scrapy_cloud_client is not None:
