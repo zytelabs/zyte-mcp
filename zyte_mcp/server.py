@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from fastmcp import FastMCP
 
 from zyte_mcp.client import ZyteClient
@@ -11,6 +13,7 @@ from zyte_mcp.tools import (
     register_browser_tools,
     register_extraction_tools,
     register_http_tools,
+    register_schema_tools,
     register_scrapy_cloud_jobs_tools,
     register_scrapy_cloud_storage_tools,
 )
@@ -27,6 +30,12 @@ def create_server() -> FastMCP:
     register_http_tools(server, client)
     register_browser_tools(server, client)
     register_extraction_tools(server, client)
+
+    anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if anthropic_api_key:
+        from anthropic import AsyncAnthropic
+        anthropic_client = AsyncAnthropic(api_key=anthropic_api_key)
+        register_schema_tools(server, client, anthropic_client)
 
     scrapy_cloud_client = get_scrapy_cloud_client_optional()
     if scrapy_cloud_client is not None:
