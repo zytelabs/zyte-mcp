@@ -91,6 +91,21 @@ Capture a screenshot of a page using Zyte browser mode.
 - Supports `full_page` capture and the same browser action set as `render_page`
 - Useful for visually verifying a page or debugging rendering issues
 
+### Zyte API — Search
+
+**`search`**  
+Search the web using Zyte's Search API (`POST /v1/search`).
+
+- `query` — search keywords
+- `domain` — search engine domain (default: `google.com`)
+- `max_results` — number of organic results to return; must be a multiple of 10 between 10 and 100 (default: `10`)
+- `include_organic` — return parsed organic results with `rank`, `title`, `url`, `snippet`, `displayed_url` (default: `true`)
+- `include_html` — return the raw SERP HTML; can be combined with `include_ai_overview` at no extra API cost since browser HTML is fetched either way (default: `false`)
+- `include_ai_overview` — trigger full browser rendering and parse Google's AI Overview into structured `{ text, sources[] }` when one is available for the query (default: `false`)
+- `query_parameters` — optional geo-targeting and locale control:
+  - Generic (portable): `geolocation` (e.g. `"US"`), `locale` (e.g. `"en-US"`)
+  - Engine-specific (Google): `gl`, `hl`, `cr`, `lr`, `safe`, `nfpr`, `uule` — style is auto-detected from which fields are set
+
 ### Zyte API — Extraction
 
 All extraction tools call Zyte's AI-powered automatic extraction. They share a common set of options: `extract_from`, `geolocation`, `ip_type`, `session_id`, `request_cookies`, `response_cookies`, and `custom_attributes`.
@@ -163,6 +178,10 @@ Return log entries for a job. Supports `count` to limit the number of lines retu
 
 **`scrapy_cloud_list_requests`**  
 Return HTTP request records logged during a job. Supports `start` and `count` for pagination.
+
+## Work in progress
+
+**`infer_product_schema`** — a tool that infers a typed product data schema from one or more product page URLs (fetching via Zyte API, extracting fields with Claude, and generating an `@attrs.define` class + JSON Schema) exists in the codebase but is not yet exposed to tool users. It is disabled pending further testing and refinement.
 
 ## Caveats
 
