@@ -107,6 +107,8 @@ def register_search_tools(server: FastMCP, client: ZyteClient) -> None:
             "Returns structured organic results (rank, title, url, snippet) and/or raw HTML. "
             "Set include_ai_overview=True to trigger full browser rendering and parse Google's "
             "AI Overview into structured text + source citations when one is available. "
+            "Set include_html=True to return the raw HTML of the SERP; can be combined with "
+            "include_ai_overview=True at no extra cost since browser HTML is fetched either way. "
             "Supports geo-targeting and locale control via query_parameters. "
             "max_results must be a multiple of 10 between 10 and 100."
         )
@@ -123,11 +125,10 @@ def register_search_tools(server: FastMCP, client: ZyteClient) -> None:
         include: list[str] = []
         if include_organic:
             include.append("organic")
-        # aiOverview triggers browser rendering; the block appears in the html field
         if include_ai_overview:
             include.append("aiOverview")
-            include.append("html")
-        elif include_html:
+        # html is needed for AI overview parsing; also added when explicitly requested
+        if include_html or include_ai_overview:
             include.append("html")
         if not include:
             include = ["organic"]
