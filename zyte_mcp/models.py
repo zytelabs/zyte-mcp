@@ -63,3 +63,36 @@ class ExtractionOptions(ZyteRequestOptions):
 class SerpOptions(BaseModel):
     extract_from: Literal["httpResponseBody", "browserHtml"] = "browserHtml"
     include_iframes: bool = False
+
+
+class SearchQueryParameters(BaseModel):
+    """Query parameters passed to the search engine.
+
+    Use the generic fields (``geolocation``, ``locale``) for portability across
+    search engines.  Use the engine-specific fields (``gl``, ``hl``, ``cr``,
+    ``lr``, ``safe``, ``nfpr``, ``uule``) for Google-native control.  If any
+    engine-specific field is set the ``engineSpecific`` style is used
+    automatically; otherwise ``generic`` style is used.
+    """
+
+    # Generic style (portable)
+    geolocation: str | None = None
+    """ISO 3166-1 alpha-2 country code, e.g. ``"US"``."""
+    locale: str | None = None
+    """BCP 47 locale tag, e.g. ``"en-US"``."""
+
+    # Engine-specific style (Google)
+    gl: str | None = None
+    """Google ``gl`` parameter — geographic limit, e.g. ``"us"``."""
+    hl: str | None = None
+    """Google ``hl`` parameter — interface language, e.g. ``"en"``."""
+    cr: str | None = None
+    """Google ``cr`` parameter — country restrict, e.g. ``"countryUS"``."""
+    lr: str | None = None
+    """Google ``lr`` parameter — language restrict, e.g. ``"lang_en"``."""
+    safe: Literal["active", "off"] | None = None
+    """SafeSearch setting."""
+    nfpr: int | None = None
+    """Set to ``1`` to disable autocorrect / spelling suggestions."""
+    uule: str | None = None
+    """Encoded location string for city-level geo-targeting."""

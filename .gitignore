@@ -11,3 +11,22 @@ wheels/
 
 # Test caches
 .pytest_cache/
+.coverage
+htmlcov/
+
+# Environment / secrets
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# User
+docs.md
+serp_ai_overview.html

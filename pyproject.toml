@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "anthropic>=0.25",
+    "beautifulsoup4>=4.14.3",
     "fastmcp>=3.2.0",
     "httpx>=0.28.1",
     "pydantic>=2.12.5",
@@ -27,3 +28,8 @@ build-backend = "hatchling.build"
 
 [tool.uv]
 package = true
+
+[dependency-groups]
+dev = [
+    "beautifulsoup4>=4.14.3",
+]

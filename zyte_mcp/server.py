@@ -16,6 +16,7 @@ from zyte_mcp.tools import (
     register_schema_tools,
     register_scrapy_cloud_jobs_tools,
     register_scrapy_cloud_storage_tools,
+    register_search_tools,
 )
 
 
@@ -30,6 +31,7 @@ def create_server() -> FastMCP:
     register_http_tools(server, client)
     register_browser_tools(server, client)
     register_extraction_tools(server, client)
+    register_search_tools(server, client)
 
     anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if anthropic_api_key:

@@ -33,6 +33,24 @@ class ZyteClient:
         if self._owns_client:
             await self._client.aclose()
 
+    async def search(self, payload: dict[str, Any]) -> dict[str, Any]:
+        search_url = self.settings.base_url.replace("/extract", "/search")
+
+        async def operation() -> dict[str, Any]:
+            response = await self._client.post(
+                search_url,
+                auth=(self.settings.api_key, ""),
+                json=payload,
+                headers={"Accept": "application/json"},
+            )
+            return await self._handle_response(response)
+
+        return await retry_zyte_call(
+            operation,
+            rate_limit_max_retries=self.settings.rate_limit_max_retries,
+            download_error_max_retries=self.settings.download_error_max_retries,
+        )
+
     async def extract(self, payload: dict[str, Any]) -> dict[str, Any]:
         self._validate_payload(payload)
 

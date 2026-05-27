@@ -6,6 +6,7 @@ from zyte_mcp.tools.http import register_http_tools
 from zyte_mcp.tools.schema import register_schema_tools
 from zyte_mcp.tools.scrapy_cloud_jobs import register_scrapy_cloud_jobs_tools
 from zyte_mcp.tools.scrapy_cloud_storage import register_scrapy_cloud_storage_tools
+from zyte_mcp.tools.search import register_search_tools
 
 __all__ = [
     "register_browser_tools",
@@ -14,4 +15,5 @@ __all__ = [
     "register_schema_tools",
     "register_scrapy_cloud_jobs_tools",
     "register_scrapy_cloud_storage_tools",
+    "register_search_tools",
 ]
