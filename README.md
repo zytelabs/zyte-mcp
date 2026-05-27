@@ -1,3 +1,5 @@
+![Zyte MCP community edition](zyte-mcp-banner.png)
+
 # zyte-mcp
 
 > **Disclaimer:** This is not an official Zyte product. It is an independent, community-built MCP server. APIs, tool behaviour, and configuration may change without notice.
